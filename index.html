@@ -1,0 +1,1582 @@
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>LLM Tokenization</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0 auto;
+            max-width: 800px;
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            margin-bottom: 10px;
+        }
+        img {
+            display: block;
+            margin: 20px auto;
+            max-width: 100%;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>LLM Tokenization</h1>
+
+    <p>Hi everyone, today we are going to look at Tokenization in Large Language Models (LLMs). Sadly, tokenization is a relatively complex and gnarly component of the state of the art LLMs, but it is necessary to understand in some detail because a lot of the strange things of LLMs that may be attributed to the neural network or otherwise appear mysterious actually trace back to tokenization.</p>
+
+    <h2>Previously: character-level tokenization</h2>
+
+    <p>So what is tokenization? Well it turns out that in our previous video, Let's build GPT from scratch, we already covered tokenization but it was only a very simple, naive, character-level version of it. When you go to the Google colab for that video, you'll see that we started with our training data (Shakespeare), which is just a large string in Python:</p>
+
+    <img src="frames/00_01_00.jpg" alt="Code snippet showing character-level tokenization">
+
+    <p>But how do we feed strings into a language model? Well, we saw that we did this by first constructing a vocabulary of all the possible characters we found in the entire training set:</p>
+
+    <pre>
+# here are all the unique characters that occur in this text
+chars = sorted(list(set(text)))
+vocab_size = len(chars)
+print(vocab_size)
+print(''.join(chars))
+    </pre>
+
+    <h2>Byte Pair Encoding (BPE)</h2>
+
+    <p>In practice, state-of-the-art language models use a lot more complicated schemes for constructing token vocabularies. They deal on the chunk level rather than the character level, and these character chunks are constructed using algorithms such as the byte pair encoding algorithm, which we will cover in detail in this video.</p>
+
+    <p>The GPT-2 paper introduced byte-level encoding as a mechanism for tokenization in the context of large language models:</p>
+
+    <img src="frames/00_03_40.jpg" alt="Excerpt from the GPT-2 paper discussing byte pair encoding">
+
+    <p>Tokens are the fundamental unit of large language models. Everything is in units of tokens and tokenization is the process for translating strings or text into sequences of tokens and vice versa.</p>
+
+    <h2>Tokenization issues</h2>
+
+    <p>Tokenization is at the heart of much weirdness in LLMs. A lot of issues that may look like they are with the neural network architecture or the large language model itself are actually issues with the tokenization. For example:</p>
+
+    <ul>
+        <li>LLMs can't spell words or do simple string processing tasks like reversing a string.</li>
+        <li>LLMs are worse at non-English languages.</li>
+        <li>LLMs are bad at simple arithmetic.</li>
+        <li>GPT-2 had quite a bit more trouble coding in Python.</li>
+        <li>Weird warnings about trailing whitespace.</li>
+        <li>"Solid Gold Magikarp" would make LLMs go off on unrelated tangents.</li>
+        <li>YAML is preferred over JSON with LLMs.</li>
+    </ul>
+</body>
+</html>
+
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tokenization by Example in a Web UI (Tiktokenizer)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+        }
+        h1, h2, h3 {
+            margin-top: 30px;
+        }
+        img {
+            max-width: 100%;
+            display: block;
+            margin: 20px auto;
+        }
+        figcaption {
+            text-align: center;
+            font-style: italic;
+            margin-bottom: 20px;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+            overflow-x: auto;
+        }
+        .callout {
+            background-color: #f8f8f8;
+            border-left: 4px solid #2980b9;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Tokenization by Example in a Web UI (Tiktokenizer)</h1>
+    
+    <p>Tokenization is at the heart of the weirdness of Large Language Models (LLMs). We shouldn't brush it off, as it is necessary to understand in some detail because a lot of the strange things about LLMs may be attributed to the neural network or otherwise appear mysterious actually trace back to tokenization.</p>
+
+    <h2>Exploring the Tiktokenizer Web App</h2>
+
+    <p>Let's explore the <a href="https://tiktokenizer.vercel.app">Tiktokenizer web app</a>. What's great about it is that tokenization runs live in your browser in JavaScript. You can type something like "hello world", and it shows the whole string broken into tokens:</p>
+
+    <figure>
+        <img src="frames/00_06_50.jpg" alt="Tiktokenizer web app screenshot">
+        <figcaption>Tiktokenizer web app showing how "hello world" is tokenized</figcaption>
+    </figure>
+
+    <p>On the left is the input string, and on the right we see it tokenized using the GPT-2 tokenizer into 3 tokens: "hello" (token 31373), " " space (token 318), and "world" (token 984).</p>
+
+    <div class="callout">
+        <p>Be careful because spaces, newlines, and other whitespace characters are included as tokens, but you can hide whitespace tokens for clarity.</p>
+    </div>
+
+    <h2>Tokenization of Numbers, Code, and Non-English Text</h2>
+
+    <p>Numbers are handled in an arbitrary way - sometimes multiple digits are a single token, sometimes individual digits are separate tokens. The LLM has to learn from patterns in the training data that these represent the same concept.</p>
+
+    <p>Code, especially Python, is tokenized inefficiently by GPT-2. Each space of indentation becomes a separate token, wasting sequence length. GPT-4 handles this much better by grouping indentation spaces.</p>
+
+    <figure>
+        <img src="frames/00_12_00.jpg" alt="Python code tokenized by GPT-2">
+        <figcaption>GPT-2 tokenizes each space in Python indentation separately, wasting sequence length</figcaption>  
+    </figure>
+
+    <p>Non-English languages like Korean tend to get broken into more tokens compared to the equivalent English text. This stretches out the sequence length, causing the attention mechanism to run out of context.</p>
+
+    <h2>GPT-4's Improved Tokenizer</h2>
+    
+    <p>The GPT-4 tokenizer (CL100K_base) has roughly double the number of tokens compared to GPT-2 (50K vs 100K). This allows the same text to be represented in fewer tokens, effectively doubling the context length the attention mechanism can utilize.</p>
+
+    <pre>
+GPT-2 token count: 300
+GPT-4 token count: 185
+    </pre>
+
+    <p>GPT-4 also deliberately groups more whitespace into single tokens, especially for Python indentation. This densifies the code representation, allowing the model to attend to more useful context when generating the next token.</p>
+
+    <p>In summary, many of the quirks and limitations of LLMs can be traced back to details of the tokenizer used. The improvements from GPT-2 to GPT-4 are not just from the model architecture, but also the more efficient tokenizer enabling the model to effectively utilize more context.</p>
+
+</body>
+</html>
+
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Tokenization in Large Language Models</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        margin: 20px 100px;
+      }
+
+      h1, h2, h3 { margin-top: 30px; }
+      
+      img {
+        display: block;
+        margin: 20px auto;
+        max-width: 80%;
+      }
+      
+      pre {
+        background-color: #f4f4f4;
+        padding: 10px;
+        overflow-x: auto;
+      }
+    </style>
+  </head>
+  
+  <body>
+    <h1>Tokenization in Large Language Models</h1>
+    
+    <p>When training large language models (LLMs), we need to take strings and feed them into the models. For that, we need to tokenize the strings into integers from a fixed vocabulary. These integers are then used to look up vectors in an embedding table, which are fed into the Transformer as input. This process gets tricky because we don't just want to support the simple English alphabet, but also different languages and special characters like emojis.</p>
+
+    <h2>Strings in Python and Unicode Code Points</h2>
+    
+    <p>In Python, strings are immutable sequences of Unicode code points. Unicode code points are defined by the Unicode Consortium as part of the Unicode standard, which currently defines roughly 150,000 characters across 161 scripts. The standard is very much alive, with the latest version 15.1 released in September 2023.</p>
+    
+    <p>We can access the Unicode code point for a single character using the <code>ord()</code> function in Python. For example:</p>
+
+    <pre>
+ord("H")       # 104
+ord("😊")      # 128522
+ord("안")      # 50504  
+    </pre>
+
+    <p>However, we can't simply use these raw code point integers for tokenization, as the vocabulary would be too large (150,000+) and unstable due to the evolving Unicode standard.</p>
+
+    <img src="frames/00_17_45.jpg" alt="Python code showing Unicode code points for a Korean string">
+    <figcaption>Using ord() to get Unicode code points for characters in a string.</figcaption>
+
+    <h2>Unicode Byte Encodings</h2>
+
+    <p>To find a better solution for tokenization, we turn to Unicode byte encodings like ASCII, UTF-8, UTF-16, and UTF-32. These encodings define how to translate the abstract Unicode code points into actual bytes that can be stored and transmitted.</p>
+    
+  </body>
+</html>
+
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Unicode Byte Encodings, ASCII, UTF-8, UTF-16, UTF-32</title>
+</head>
+<body>
+<article>
+<h1>Unicode Byte Encodings, ASCII, UTF-8, UTF-16, UTF-32</h1>
+
+<p>The Unicode Consortium defines three types of encodings: UTF-8, UTF-16 and UTF-32. These encodings are the way by which we can take Unicode text and translate it into binary data or byte streams.</p>
+
+<p>UTF-8 is by far the most common encoding. It takes every single Unicode code point and translates it to a byte stream between one to four bytes long, depending on the code point. The first 128 code points (ASCII) only need one byte. The next 1,920 code points need two bytes to encode, which covers the remainder of almost all Latin-script alphabets. Three bytes are needed for the remaining 61,440 code points of the Basic Multilingual Plane (BMP). Four bytes cover the other planes of Unicode, which include less common CJK characters, various historic scripts, and mathematical symbols.</p>
+
+<img src="frames/00_19_50.jpg" alt="Wikipedia article on UTF-8 encoding">
+<figcaption>The Wikipedia article on UTF-8 encoding shows how different ranges of Unicode code points map to byte sequences of varying length.</figcaption>
+
+<p>UTF-16 and UTF-32, while having some advantages like fixed-width encoding, are significantly more wasteful in terms of space, especially for simpler ASCII characters. Most standards explicitly favor UTF-8.</p>
+
+<p>In Python, we can use the <code>encode()</code> method on strings to get their UTF-8 byte representation:</p>
+
+<pre><code>
+In [64]: list("안녕하세요 👋 (hello in Korean)".encode("utf-8")) 
+Out[64]: [236,
+          149,
+          136,
+          235,
+          133,
+          149,
+          237,
+          149,
+          152,
+          236,
+          132,
+          184,
+          236,
+          154,
+          148, 
+          240,
+          159,
+          145,
+          139,
+          32,
+          240,
+          159,  
+          140,
+          136,
+          108,
+          101,
+          108,
+          108,
+          111,
+          32,
+          105,
+          110,
+          32,
+          75,
+          111,
+          114,
+          101,  
+          97,
+          110,
+          41]
+</code></pre>
+
+<p>However, directly using the raw UTF-8 bytes would be very inefficient for language models. It would lead to extremely long sequences with a small vocabulary size of only 256 possible byte values. This prevents attending to sufficiently long contexts.</p>  
+
+<p>The solution is to use a byte pair encoding (BPE) algorithm to compress these byte sequences to a variable amount. This allows efficiently representing the text with a larger but tunable vocabulary size.</p>
+
+</article>
+</body>
+</html>
+
+
+<html>
+<head>
+  <title>Daydreaming: Deleting Tokenization in Language Models</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      margin: 0 auto;
+      max-width: 800px;
+      padding: 20px;
+    }
+    h1, h2 {
+      color: #333;
+    }
+    img {
+      display: block;
+      margin: 20px auto;
+      max-width: 100%;
+    }
+    code {
+      background-color: #f4f4f4;
+      padding: 2px 4px;
+    }
+    .caption {
+      font-style: italic;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>Daydreaming: Deleting Tokenization in Language Models</h1>
+
+  <p>In this article, we explore the idea of removing tokenization from language models, as proposed in a paper from the summer of last year. While this would be an amazing achievement, allowing us to feed byte streams directly into our models, it comes with some challenges.</p>
+
+  <h2>The Problem with Long Sequences</h2>
+
+  <p>One of the main issues with removing tokenization is that attention becomes extremely expensive for very long sequences. To address this, the paper proposes a hierarchical structuring of the Transformer architecture that could allow feeding in raw bytes.</p>
+
+  <img src="frames/00_23_00.jpg" alt="Overview of MegaByte">
+  <p class="caption">Figure 1. Overview of MegaByte with patch size. A small local model autoregressively predicts each patch byte, using the output of a larger global model to condition on previous patches. Global and Local inputs are padded by a token respectively to avoid leaking information about future tokens.</p>
+
+  <h2>Establishing the Viability of Tokenization-Free Modeling</h2>
+
+  <p>The paper concludes by stating that their results "establish the viability of tokenization-free autoregressive sequence modeling at scale." However, this approach has not yet been proven out by sufficiently many groups and at a sufficient scale.</p>
+
+  <h2>The Current State of Affairs</h2>
+
+  <p>For now, we still need to compress text using the Byte Pair Encoding (BPE) algorithm before feeding it into language models. The BPE algorithm is not overly complicated, and its Wikipedia page provides a good walkthrough.</p>
+
+  <p>Tokenization-free modeling would be a significant breakthrough, and hopefully, future research will make it a reality. Until then, we must rely on established methods like BPE to preprocess our input data.</p>
+
+</body>
+</html>
+
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Byte Pair Encoding (BPE) Algorithm Walkthrough</title>
+</head>
+<body>
+    <h1>Byte Pair Encoding (BPE) Algorithm Walkthrough</h1>
+
+    <p>The Byte Pair Encoding (BPE) algorithm is quite instructive for understanding the basic idea of tokenization. Let's walk through an example to see how it works.</p>
+
+    <h2>Example</h2>
+    
+    <p>Suppose we have a vocabulary of only four elements: a, b, c, and d. Our input sequence is:</p>
+
+    <img src="frames/00_24_00.jpg" alt="Input sequence: aaabdaaabac">
+    <figcaption>Input sequence: aaabdaaabac</figcaption>
+
+    <p>The sequence is too long, and we'd like to compress it. The BPE algorithm iteratively finds the pair of tokens that occur most frequently and replaces that pair with a single new token.</p>
+
+    <p>In the first iteration, the byte pair "aa" occurs most often, so it will be replaced by a byte that is not used in the data, such as "Z". The data and replacement table become:</p>
+
+    <img src="frames/00_25_00.jpg" alt="After first iteration">
+    <figcaption>After first iteration: Zabdaaabac, Z=aa</figcaption>
+
+    <p>The process is repeated with byte pair "ab", replacing it with "Y":</p>
+
+    <img src="frames/00_25_30.jpg" alt="After second iteration"> 
+    <figcaption>After second iteration: ZYdZYac, Y=ab, Z=aa</figcaption>
+
+    <p>In the final round, the pair "ZY" is most common and replaced with "X":</p>
+
+    <img src="frames/00_26_05.jpg" alt="After final iteration">
+    <figcaption>After final iteration: XdXac, X=ZY, Y=ab, Z=aa</figcaption>
+
+    <h2>Compression Result</h2>
+
+    <p>After going through this process, instead of having a sequence of 11 tokens with a vocabulary length of 4, we now have a sequence of 5 tokens with a vocabulary length of 7.</p>
+
+    <p>The BPE algorithm can be applied in the same way to byte sequences. Starting with a vocabulary size of 256, we iteratively find the byte pairs that occur most frequently, mint new tokens, append them to the vocabulary, and replace occurrences in the data. This results in a compressed dataset and an encoding/decoding algorithm.</p>
+
+</body>
+</html>
+
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>LLM Tokenization</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0 auto;
+            max-width: 800px;
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            margin-top: 30px;
+        }
+        img {
+            display: block;
+            margin: 20px auto;
+            max-width: 100%;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+        }
+        .image-caption {
+            font-style: italic;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>LLM Tokenization</h1>
+    
+    <p>In this chapter, we will start the implementation of tokenization in large language models (LLMs). Tokenization is a crucial component of the state of the art LLMs, but it is necessary to understand in some detail because a lot of the shining results of LLMs that may be attributed to the neural network or otherwise actually trace back to tokenization.</p>
+    
+    <h2>Unicode Tokenization</h2>
+    
+    <p>To get the tokens, we take our input text and encode it into UTF-8. At this point, the tokens will be a raw bytes single stream of bytes. To make it easier to work with, we convert all those bytes to integers and create a list out of it for easier manipulation and visualization in Python.</p>
+
+    <img src="frames/00_27_45.jpg" alt="Tokenization code">
+    <p class="image-caption">Converting text to a list of token integers</p>
+
+    <p>The original paragraph has a length of 533 code points, but after encoding into UTF-8, it expands to 616 bytes or tokens. This is because while many simple ASCII characters become a single byte, more complex Unicode characters can take up to four bytes each.</p>
+
+    <h2>Finding the Most Common Byte Pair</h2>
+
+    <p>As a first step in the algorithm, we want to iterate over the bytes and find the pair of bytes that occur most frequently, as we will then merge them.</p>
+
+    <img src="frames/00_28_15.jpg" alt="Counting consecutive pairs">
+    <p class="image-caption">Iterating over bytes to find the most common pair</p>
+
+    <p>There are many different ways to approach counting consecutive pairs and finding the most common pair. Here is one implementation in Python:</p>
+
+    <pre>
+def get_most_frequent_pair(tokens):
+    pairs = {}
+    for i in range(len(tokens)-1):
+        pair = (tokens[i], tokens[i+1])
+        if pair not in pairs:  
+            pairs[pair] = 0
+        pairs[pair] += 1
+    
+    most_frequent_pair = None
+    max_frequency = 0
+    for pair, frequency in pairs.items():
+        if frequency > max_frequency:
+            most_frequent_pair = pair
+            max_frequency = frequency
+
+    return most_frequent_pair 
+    </pre>
+
+    <p>This function takes the list of token integers, counts the frequency of each consecutive pair, and returns the pair that appears most often. This is a key step in the byte pair encoding algorithm used for tokenization in many LLMs.</p>
+
+</body>
+</html>
+
+
+<html>
+<head>
+  <title>Finding Most Common Consecutive Pairs in Tokenized Text</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      margin: 40px;
+    }
+    h1, h2, h3 {
+      margin-top: 30px;
+    }
+    img {
+      display: block;
+      margin: 20px auto;
+      max-width: 100%;
+      border: 1px solid #ccc;
+    }
+    pre {
+      background-color: #f4f4f4;
+      padding: 10px;
+      overflow-x: auto;
+    }
+    .caption {
+      font-style: italic;
+      text-align: center;
+      margin-top: -10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Finding Most Common Consecutive Pairs in Tokenized Text</h1>
+  
+  <p>In this chapter, we will explore how to find the most commonly occurring consecutive pairs in a list of tokenized integers. We'll implement a function called <code>get_stats</code> that takes a list of integers and returns a dictionary keeping track of the counts of each consecutive pair.</p>
+
+  <h2>Implementing <code>get_stats</code></h2>
+
+  <p>Here's how we can implement <code>get_stats</code> in Python:</p>
+
+  <pre>
+def get_stats(ids):
+    counts = {}
+    for pair in zip(ids, ids[1:]): # Pythonic way to iterate consecutive elements
+        counts[pair] = counts.get(pair, 0) + 1
+    return counts
+  </pre>
+
+  <p>This function uses <code>zip(ids, ids[1:])</code> to iterate over consecutive elements of the input list in a Pythonic way. It then builds a dictionary <code>counts</code> where the keys are tuples of consecutive elements and the values are the number of occurrences.</p>
+
+  <p>Let's see it in action on a sample list of tokenized integers:</p>
+
+  <pre>
+tokens = [1, 115, 32, 99, 97, 110, 32, 98, 101, 32, 109, 111, 114, 101, 32, 116, 104, 97, 110, 32, 97, 32, 108, 105, 116]
+stats = get_stats(tokens)
+print(sorted([(v,k) for k,v in stats.items()], reverse=True))  
+  </pre>
+
+  <p>Here we print the (value, key) pairs from the <code>stats</code> dictionary, sorted by value in descending order. This gives us a nice view of the most common consecutive pairs:</p>
+
+  <img src="frames/00_29_45.jpg" alt="Printing stats dictionary">
+  <p class="caption">Printing the stats dictionary sorted by value in descending order</p>
+
+  <p>We can see that the pair <code>(101, 32)</code> is the most commonly occurring, appearing 20 times in the input. Using <code>chr()</code> we can convert these Unicode code points to characters:</p>
+
+  <pre>
+print(chr(101), chr(32))
+# Output: e  
+  </pre>
+
+  <p>So the most common consecutive pair is "e" followed by a space, which makes sense as many English words end with "e".</p>
+
+  <h2>Conclusion</h2>
+
+  <p>The <code>get_stats</code> function provides a straightforward way to find the most common consecutive pairs in a tokenized list using a dictionary to count occurrences. This can be a useful building block for various text analysis tasks.</p>
+
+</body>
+</html>
+
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>LLM Tokenization</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 20px 0;
+        }
+        .code {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: "Courier New", monospace;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>LLM Tokenization</h1>
+    <p>In the previous video, "Let's build GPT from scratch", a simple, naive, character-level version of tokenization was covered. However, when it comes to large language models (LLMs), a more complex and nuanced approach is necessary to understand the neural network or otherwise appear mysterious to trace back to tokenization.</p>
+
+    <h2>Merging the Most Common Pair</h2>
+    <p>The tokenization process begins by iterating over the sequence and minting a new token with the ID of 256, as the current tokens range from 0 to 255. During this iteration, every occurrence of the most common pair (in this case, "101, 32") is replaced with the new token ID.</p>
+
+    <img src="frames/00_33_30.jpg" alt="Python code for merging the most common pair">
+    <p class="code">def merge(ids, pair, idx):<br>
+    # in the list of ints (ids), replace all consecutive occurrences of pair with the new token idx<br>
+    newids = []<br>
+    i = 0<br>
+    while i &lt; len(ids):<br>
+        # if we are not at the very last position AND the pair matches, replace it<br>
+        if i &lt; len(ids) - 1 and ids[i] == pair[0] and ids[i+1] == pair[1]:<br>
+            newids.append(idx)<br>
+            i += 2<br>
+        else:<br>
+            newids.append(ids[i])<br>
+            i += 1<br>
+    return newids
+    </p>
+
+    <p>The <code>merge</code> function takes a list of IDs, the pair to be replaced, and the new index (idx) as arguments. It iterates through the list, checking for consecutive occurrences of the pair and replacing them with the new token ID. If a match is found, the new ID is appended to the <code>newids</code> list, and the position is incremented by two to skip over the entire pair. If no match is found, the element at the current position is copied over, and the position is incremented by one.</p>
+
+    <h2>Iterating the Tokenization Process</h2>
+    <p>The tokenization process is repeated iteratively, finding the most common pair at each step and replacing it with a new token ID. The number of iterations is a hyperparameter that can be tuned to find the optimal vocabulary size. Typically, larger vocabulary sizes result in shorter sequences, and there is a sweet spot that works best in practice. For example, GPT-4 currently uses around 100,000 tokens, which is considered a reasonable number for large language models.</p>
+
+</body>
+</html>
+
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Training the Tokenizer: Adding the While Loop, Compression Ratio</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2 {
+            color: #1a0dab;
+        }
+        img {
+            display: block;
+            margin: 20px auto;
+            max-width: 100%;
+            border: 1px solid #ccc;
+        }
+        pre {
+            background-color: #f0f0f0;
+            padding: 10px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Training the Tokenizer: Adding the While Loop, Compression Ratio</h1>
+    
+    <p>In this section, we will dive into the process of training the tokenizer by adding a while loop and examining the compression ratio achieved.</p>
+
+    <h2>Preparing the Training Data</h2>
+
+    <p>To begin, we grabbed the entire blog post and stretched it out into a single line to use as our training data. Using longer text allows us to have more representative token statistics and obtain more sensible results.</p>
+
+    <p>Here's a snapshot of the code used to prepare the training data:</p>
+
+    <img src="frames/00_35_10.jpg" alt="Preparing the training data">
+    <figcaption>Preparing the training data by encoding the text and converting it to a list of integers.</figcaption>
+
+    <h2>Implementing the Merging Loop</h2>
+
+    <p>Next, we implemented the merging loop to iteratively combine the most frequently occurring pair of tokens. The key steps are:</p>
+
+    <ol>
+        <li>Set the desired final vocabulary size (e.g., 276).</li>
+        <li>Create a copy of the initial tokens list.</li>
+        <li>Initialize a merges dictionary to store the mappings of merged tokens.</li>
+        <li>Iterate for a specified number of merges (e.g., 20).</li>
+        <li>In each iteration:
+            <ul>
+                <li>Find the most commonly occurring pair of tokens.</li>
+                <li>Assign a new token ID to the merged pair.</li>
+                <li>Replace all occurrences of the pair with the new token ID.</li>
+                <li>Record the merge in the merges dictionary.</li>
+            </ul>
+        </li>
+    </ol>
+
+    <p>Here's the complete code for the merging loop:</p>
+
+    <img src="frames/00_38_20.jpg" alt="Merging loop code">
+    <figcaption>Code implementation of the merging loop.</figcaption>
+
+    <h2>Compression Ratio</h2>
+
+    <p>After performing the merging process, we can examine the compression ratio achieved. In our example, we started with 24,000 bytes and ended up with 19,000 tokens after 20 merges. The compression ratio is calculated by dividing the original length by the compressed length:</p>
+
+    <pre>
+tokens length: 24597
+ids length: 19438
+compression ratio: 1.27X
+    </pre>
+
+    <p>The compression ratio indicates the amount of compression achieved on the text with the specified number of merges. As more vocabulary elements are added, the compression ratio increases.</p>
+
+    <h2>Conclusion</h2>
+
+    <p>In this chapter, we covered the process of training the tokenizer by adding a while loop to perform iterative merging of token pairs. We also examined the compression ratio achieved through this process. The trained tokenizer is a separate stage from the language model itself and plays a crucial role in preparing the input data for the model.</p>
+
+</body>
+</html>
+
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Tokenizer: A Separate Stage from the LLM</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0 auto;
+            max-width: 800px;
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            margin-top: 20px;
+        }
+        img {
+            display: block;
+            margin: 20px auto;
+            max-width: 100%;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>The Tokenizer: A Separate Stage from the LLM</h1>
+
+    <p>It's important to understand that the tokenizer is a completely separate, independent module from the LLM. It has its own training dataset of text (which could be different from that of the LLM), on which you train the vocabulary using the Byte Pair Encoding (BPE) algorithm. The LLM later only ever sees the tokens and never directly deals with any text.</p>
+
+    <img src="frames/00_40_55.jpg" alt="Tokenizer/LLM Diagram">
+    <figcaption>The tokenizer translates between raw text and sequences of tokens. The LLM only sees token sequences.</figcaption>
+
+    <p>Once you have trained the tokenizer and have the vocabulary and merges, you can do both encoding and decoding. The tokenizer is a translation layer between raw text (a sequence of Unicode code points) and token sequences. It can take raw text and turn it into a token sequence, and vice versa.</p>
+
+    <h2>Tokenizer Training and LLM Training</h2>
+
+    <p>Typically, in a state-of-the-art application, you might take all of your training data for the language model and run it through the tokenizer as a single, massive pre-processing step. This translates everything into token sequences, which are then stored on disk. The large language model reads these token sequences during training.</p>
+
+    <p>You may want the training sets for the tokenizer and the large language model to be different. For example, when training the tokenizer, you might care about performance across many different languages and both code and non-code data. The mixture of languages and amount of code in your tokenizer training set will determine the number of merges and the density of token representation for those data types.</p>
+
+    <p>Roughly speaking, if you add a large amount of data in a particular language to your tokenizer training set, more tokens in that language will get merged. This results in shorter sequences for that language, which can be beneficial for the LLM, as it has a finite context length it can work with in the token space.</p>
+
+    <h2>Conclusion</h2>
+
+    <p>In summary, the tokenizer is a crucial, separate stage from the LLM itself. It is trained on its own dataset using the BPE algorithm to create a vocabulary and merges. This allows it to translate between raw text and token sequences, which the LLM then operates on. The composition of the tokenizer's training set can significantly impact the token representation and sequence lengths for different types of data.</p>
+
+</body>
+</html>
+
+
+<html>
+<head>
+  <title>Decoding Tokens to Strings in Large Language Models</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      margin: 40px;
+    }
+    h1, h2, h3 {
+      margin-top: 30px;
+    }
+    img {
+      display: block;
+      margin: 20px auto;
+      max-width: 100%;
+    }
+    pre {
+      background-color: #f4f4f4;
+      padding: 10px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Decoding Tokens to Strings</h1>
+  
+  <p>Let's begin with decoding, which is the process of taking a token sequence and using the tokenizer to get back a Python string object representing the raw text. This is the function we'd like to implement.</p>
+
+  <p>There are many different ways to implement the decode function. Here's one approach:</p>
+
+  <pre>
+def decode(ids):
+  # given ids (list of integers), return Python string
+  vocab = {idx: bytes([idx]) for idx in range(256)}
+  for (p0, p1), idx in merges.items():  
+    vocab[idx] = vocab[p0] + vocab[p1]
+
+  tokens = [vocab[idx] for idx in ids]
+  text = tokens.decode("utf-8")
+  return text
+  </pre>
+
+  <p>We create a preprocessing variable called <code>vocab</code>, which is a dictionary mapping from token ID to the bytes object for that token. We begin with the raw bytes for tokens 0 to 255. Then we iterate over the merges in the order they were inserted, populating the vocab dictionary by concatenating the bytes of the children tokens. It's important to iterate over the dictionary items in the same order they were inserted, which is guaranteed in Python 3.7+.</p>
+
+  <p>Given the token IDs, we look up their bytes in the vocab, concatenate them together, and decode from UTF-8 to get the final string.</p>
+
+  <img src="frames/00_45_10.jpg" alt="Decode function in Python">
+  <figcaption>The decode function implemented in Python.</figcaption>
+
+  <h2>Handling Invalid UTF-8 Sequences</h2>
+
+  <p>One issue with this implementation is that it can throw an error if the token sequence is not a valid UTF-8 encoding. For example, trying to decode the single token 128 results in an error:</p>
+
+  <pre>
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0x80 in position 0: invalid start byte  
+  </pre>
+
+  <p>This is because the binary representation of 128 is <code>10000000</code>, which is not a valid UTF-8 sequence according to the encoding rules. To handle this, we can pass <code>errors="replace"</code> to the <code>decode</code> function, which replaces invalid bytes with the Unicode replacement character (�).</p>
+
+  <p>The standard practice is to use <code>errors="replace"</code> when decoding. If you see the replacement character in your output, it means something went wrong and the language model output an invalid sequence of tokens.</p>
+
+  <p>In summary, decoding is the process of converting a sequence of token IDs back into a human-readable string. It involves looking up the bytes for each token, concatenating them, and decoding the result from UTF-8. Handling invalid UTF-8 sequences is important to avoid errors and indicate when the model produces an invalid output.</p>
+
+</body>
+</html>
+
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Encoding Strings to Tokens in Language Models</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0 auto;
+            max-width: 800px;
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            margin-bottom: 20px;
+        }
+        img {
+            display: block;
+            margin: 20px auto;
+            max-width: 100%;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+            overflow-x: auto;
+        }
+        .caption {
+            font-style: italic;
+            text-align: center;
+            margin-top: -10px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Encoding Strings to Tokens in Language Models</h1>
+    
+    <p>In this article, we will explore how to implement the encoding of strings into tokens, an essential part of the tokenization process in large language models (LLMs).</p>
+
+    <h2>Overview</h2>
+
+    <p>The goal is to create a function that takes a string as input and returns a list of integers representing the tokens. This is the opposite direction of the decoding process covered in the previous section.</p>
+
+    <p>The implementation will involve several steps, including:</p>
+    <ol>
+        <li>Encoding the text into UTF-8 bytes</li>
+        <li>Converting the bytes into a list of integers</li>
+        <li>Iteratively merging pairs of tokens based on the merges dictionary</li>
+    </ol>
+
+    <h2>Implementation</h2>
+
+    <p>Here's the Python code for the <code>encode</code> function:</p>
+
+    <pre>
+def encode(text):
+    # given a string, return list of integers (the tokens)
+    tokens = list(text.encode("utf-8"))
+    while True:
+        stats = get_stats(tokens)
+        pair = min(stats, key=lambda p: merges.get(p, float("inf")))
+        if pair not in merges:
+            break # nothing else can be merged
+        idx = merges[pair]
+        tokens = merge(tokens, pair, idx)
+    return tokens
+    </pre>
+
+    <p>Let's break down the key steps:</p>
+
+    <ol>
+        <li>The input text is encoded into UTF-8 bytes using <code>text.encode("utf-8")</code>.</li>
+        <li>The bytes are converted into a list of integers using <code>list(...)</code>.</li>
+        <li>A while loop is used to iteratively merge pairs of tokens based on the merges dictionary. This continues until no more merges can be performed.</li>
+        <li>Inside the loop, the <code>get_stats</code> function is used to count the occurrences of each pair in the current token sequence.</li>
+        <li>The pair with the lowest index in the merges dictionary is selected for merging using <code>min(...)</code> and a custom key function.</li>
+        <li>If the selected pair is not found in the merges dictionary, the loop breaks since no more merges can be performed.</li>
+        <li>Otherwise, the selected pair is merged into a single token using the <code>merge</code> function and the corresponding index from the merges dictionary.</li>
+        <li>The loop continues until no more merges can be performed, and the final list of tokens is returned.</li>
+    </ol>
+
+    <img src="frames/00_54_50.jpg" alt="Code snippet of the encode function">
+    <p class="caption">The encode function implementation in Python</p>
+
+    <h2>Handling Special Cases</h2>
+
+    <p>It's important to handle special cases, such as when the input string is empty or contains only a single character. In such cases, there are no pairs to merge, so the function should return the tokens as is.</p>
+
+    <p>To handle this, a condition can be added at the beginning of the function:</p>
+
+    <pre>
+if len(tokens) &lt;= 2:
+    return tokens
+    </pre>
+
+    <h2>Testing and Validation</h2>
+
+    <p>To ensure the correctness of the implementation, it's crucial to test the <code>encode</code> function with various input strings and validate the results. Here are a few test cases:</p>
+
+    <ol>
+        <li>Encoding and decoding a string should result in the same string.</li>
+        <li>Encoding and decoding the training text used to train the tokenizer should produce the same text.</li>
+        <li>Encoding and decoding validation data that the tokenizer hasn't seen before should also work correctly.</li>
+    </ol>
+
+    <img src="frames/00_57_00.jpg" alt="Diagram illustrating the encoding and decoding process">
+    <p class="caption">The encoding and decoding process in the tokenizer</p>
+
+    <h2>Conclusion</h2>
+
+    <p>Implementing the encoding of strings into tokens is a fundamental component of tokenization in large language models. By following the steps outlined in this article, you can create a function that takes a string and returns a list of integers representing the tokens.</p>
+
+    <p>Remember to handle special cases, test your implementation thoroughly, and validate the results to ensure the correctness of your tokenizer.</p>
+
+</body>
+</html>
+
+
+<html>
+<head>
+  <title>Forced Splits Using Regex Patterns in GPT Tokenization</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      margin: 0 auto;
+      max-width: 800px;
+      padding: 20px;
+    }
+    
+    h1, h2 {
+      color: #333;
+    }
+    
+    img {
+      display: block;
+      margin: 20px auto;
+      max-width: 100%;
+    }
+    
+    pre {
+      background-color: #f4f4f4;
+      padding: 10px;
+    }
+    
+    .caption {
+      font-style: italic;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>Forced Splits Using Regex Patterns in GPT Tokenization</h1>
+  
+  <p>In the GPT-2 series, the tokenizer uses the byte pair encoding (BPE) algorithm. The paper mentions that while the space of model-able strings is large, many common characters, including numerals, punctuation, and other symbols, are unified within the BPE's standard Unicode vocabulary. However, BPE implementations often operate on Unicode code points rather than byte sequences, which leads to suboptimal merges.</p>
+  
+  <p>To avoid this, GPT-2 prevents BPE from merging across character boundaries by using a regex pattern. The relevant code is found in the <code>encoder.py</code> file:</p>
+
+  <img src="frames/00_59_35.jpg" alt="GPT-2 encoder.py code snippet">
+  <p class="caption">The <code>re.compile()</code> function in GPT-2's <code>encoder.py</code> file.</p>
+
+  <p>This regex pattern is designed to split the input text into chunks, ensuring that certain character types (letters, numbers, punctuation) are never merged together during the BPE process.</p>
+
+  <h2>Analyzing the Regex Pattern</h2>
+
+  <p>The regex pattern is composed of several parts, separated by the "or" operator (<code>|</code>). Let's break it down:</p>
+
+  <ul>
+    <li><code>'\s+\S'</code>: Matches one or more whitespace characters followed by a non-whitespace character.</li>
+    <li><code>'\p{L}+'</code>: Matches one or more Unicode letters.</li>
+    <li><code>'\p{N}+'</code>: Matches one or more Unicode digits.</li>
+    <li><code>'[^\s\p{L}\p{N}]+'</code>: Matches one or more characters that are not whitespace, letters, or digits (e.g., punctuation).</li>
+    <li><code>'\s+(?!\S)'</code>: Matches one or more whitespace characters that are not followed by a non-whitespace character (i.e., trailing whitespace).</li>
+  </ul>
+
+  <p>By applying this regex pattern to the input text, GPT-2 ensures that the BPE algorithm only merges tokens within each chunk, preventing undesired merges across character types.</p>
+
+  <img src="frames/01_10_20.jpg" alt="Example of regex pattern splitting Python code">
+  <p class="caption">The regex pattern splits the Python code into chunks based on character types.</p>
+
+  <h2>Conclusion</h2>
+
+  <p>GPT-2's tokenizer employs a regex pattern to force splits across character categories before applying the BPE algorithm. This approach helps maintain the integrity of the tokenization process and prevents suboptimal merges that could negatively impact the model's performance. While the exact training code for the GPT-2 tokenizer has not been released, understanding the regex pattern provides valuable insights into how the tokenizer handles input text.</p>
+
+</body>
+</html>
+
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tiktoken Library Introduction</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0 auto;
+            max-width: 800px;
+            padding: 20px;
+        }
+        h1, h2 {
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 10px;
+        }
+        img {
+            display: block;
+            margin: 20px auto;
+            max-width: 100%;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Tiktoken Library Introduction</h1>
+    
+    <p>In this chapter, we introduce the Tiktoken library from OpenAI, the official library for tokenization. We'll cover the installation process and demonstrate how to use it for tokenization inference.</p>
+    
+    <h2>Installation</h2>
+    <p>To install Tiktoken, run the following command:</p>
+    <pre>pip install tiktoken</pre>
+    
+    <h2>Tokenization Inference</h2>
+    <p>Using Tiktoken is straightforward for tokenization inference. Here's a simple example:</p>
+    <img src="frames/01_12_20.jpg" alt="Tiktoken usage example">
+    <p>Running this code gives us the GPT-2 tokens or the GPT-4 tokens. The output shows that whitespaces in GPT-2 remain unmerged, while in GPT-4, they become merged.</p>
+    
+    <h2>Differences Between GPT-2 and GPT-4 Tokenizers</h2>
+    <p>To understand the differences between the GPT-2 and GPT-4 tokenizers, we can look at the <code>tiktoken/openi_public.py</code> file in the Tiktoken library. This file contains the definitions of the different tokenizers maintained by OpenAI.</p>
+    <img src="frames/01_13_20.jpg" alt="GPT-2 and GPT-4 tokenizer patterns">
+    <p>Some key changes in the GPT-4 tokenizer include:</p>
+    <ul>
+        <li>Case-insensitive matching for apostrophes (e.g., 's, 'd, 'm)</li>
+        <li>Different handling of whitespaces</li>
+        <li>Numbers are only merged up to three digits</li>
+    </ul>
+    <p>Additionally, the vocabulary size increased from roughly 50k in GPT-2 to around 100k in GPT-4.</p>
+    
+    <p>While the full details of the pattern changes are complex, these are some of the main differences between the GPT-2 and GPT-4 tokenizers. The next step is to briefly walk through the GPT-2 <code>encoder.py</code> released by OpenAI.</p>
+</body>
+</html>
+
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>GPT-2 Encoder Walkthrough</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 40px;
+        }
+        h1, h2, h3 {
+            margin-bottom: 20px;
+        }
+        img {
+            display: block;
+            margin: 20px auto;
+            max-width: 100%;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>GPT-2 Encoder Walkthrough</h1>
+    
+    <h2>Introduction</h2>
+    <p>OpenAI has released the GPT-2 encoder.py file, which is a tokenizer for the GPT-2 model. This file is fairly short and should be relatively understandable at this point. The encoder is equivalent to the vocab object in our implementation, and the vocab_bpe file is equivalent to our merges.</p>
+
+    <h2>Loading and Inspecting the Tokenizer</h2>
+    <p>At the bottom of the file, two files are loaded: encoder_json and vocab_bpe. Some light processing is done, and then the encoder object, which is the tokenizer, is called. To inspect these files, you can use the following code:</p>
+    <pre>
+with open(os.path.join(models_dir, 'model_name', 'encoder.json'), 'r') as f:
+    encoder = json.load(f)
+with open(os.path.join(models_dir, 'model_name', 'vocab.bpe'), 'r', encoding="utf-8") as f:
+    bpe_data = f.read()
+bpe_merges = [tuple(merge_str.split()) for merge_str in bpe_data.split('\n')[1:-1]]
+    </pre>
+    <img src="frames/01_16_00.jpg" alt="Decoding code">
+    <figcaption>Code for decoding a sequence of integers into text using the vocab object.</figcaption>
+
+    <h2>Byte Pair Encoding Algorithm</h2>
+    <p>The main part of the encoder.py file is the bpe function, which is similar to the loop in our implementation where the next pair to merge is identified. There is also a loop to merge the pair whenever it is found in the sequence, repeating until no more merges are possible.</p>
+    <img src="frames/01_17_30.jpg" alt="BPE algorithm code">
+    <figcaption>The core of the Byte Pair Encoding algorithm in the encoder.py file.</figcaption>
+
+    <h2>Encode and Decode Functions</h2>
+    <p>The encoder.py file also includes encode and decode functions, similar to our implementation. However, OpenAI's code includes an additional layer of byte encoding and decoding, which is a somewhat superfluous implementation detail.</p>
+
+    <h2>Conclusion</h2>
+    <p>While OpenAI's encoder.py code is a bit messy, it is algorithmically identical to what we have built in our own implementation. Understanding this code provides insight into how to build, train, and use a Byte Pair Encoding tokenizer for encoding and decoding text.</p>
+</body>
+</html>
+
+
+<html>
+<head>
+  <title>Special Tokens in GPT-2 and GPT-4</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1, h2 {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+      margin: 20px 0;
+    }
+    pre {
+      background-color: #f4f4f4;
+      padding: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Special Tokens in GPT-2 and GPT-4</h1>
+
+  <p>In this blog post, we will explore the concept of special tokens in the context of GPT-2 and GPT-4 tokenizers. Special tokens are used to delimit different parts of the data or introduce a special structure to the token streams.</p>
+
+  <h2>GPT-2 Encoder</h2>
+  
+  <p>The GPT-2 encoder has a vocabulary size of 50,257 tokens. This includes 256 raw byte tokens, 50,000 merged tokens from the byte pair encoding (BPE) process, and one special token called the "end of text" token.</p>
+
+  <img src="frames/01_19_40.jpg" alt="GPT-2 encoder code">
+  <figcaption>The GPT-2 encoder code showing the special "end of text" token.</figcaption>
+
+  <p>The "end of text" token, represented by the integer 50256, is used to delimit documents in the training set. When creating the training data, this token is inserted between tokenized documents to signal to the language model that the document has ended and what follows is unrelated to the previous document.</p>
+
+  <h2>Extending the Tokenizer</h2>
+
+  <p>It is possible to extend the tokenizer by adding more special tokens. The <code>tiktoken</code> library allows you to create your own encoding object by specifying additional special tokens:</p>
+
+  <pre>
+cl100k_base = tiktoken.get_encoding("cl100k_base")
+...
+special_tokens={
+  "&lt;|im_start|&gt;": 100264,
+  "&lt;|im_end|&gt;": 100265,
+}
+  </pre>
+
+  <p>When adding special tokens, it is necessary to perform model surgery on the transformer and its parameters. This includes extending the embedding matrix for the vocabulary tokens and the final layer of the transformer to accommodate the new tokens.</p>
+
+  <h2>GPT-4 Tokenizer</h2>
+
+  <p>The GPT-4 tokenizer differs from the GPT-2 tokenizer in terms of the special tokens used. In addition to the "end of text" token, GPT-4 includes four additional tokens: "fim_prefix", "fim_middle", "fim_suffix", and an additional "endofprompt" token.</p>
+
+  <img src="frames/01_24_00.jpg" alt="GPT-4 tokenizer code">
+  <figcaption>The GPT-4 tokenizer code showing the additional special tokens.</figcaption>
+
+  <p>These special tokens are commonly used in fine-tuning the model for specific tasks, such as converting a base model into a chat model like ChatGPT.</p>
+
+  <h2>Conclusion</h2>
+
+  <p>Understanding the concept of special tokens is crucial when working with tokenizers in large language models like GPT-2 and GPT-4. By leveraging special tokens, you can delimit documents, introduce special structures, and fine-tune models for specific tasks. The flexibility to extend tokenizers with custom special tokens allows for greater control and customization in natural language processing applications.</p>
+
+</body>
+</html>
+
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minbpe Exercise: Write Your Own GPT-4 Tokenizer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0 auto;
+            max-width: 800px;
+            padding: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        img {
+            display: block;
+            margin: 20px auto;
+            max-width: 100%;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Minbpe Exercise: Write Your Own GPT-4 Tokenizer</h1>
+    <p>At this point, you have everything you need to build your own GPT-4 tokenizer. This is the exercise progression you may wish to follow. You'll note that it is part of the minbpe repo, which is the solution to that exercise, and is a cleaned-up version of the code above.</p>
+    <h2>Exercise Progression</h2>
+    <p>The exercise progression is broken up into four steps that build up to what can be a GPT-4 tokenizer:</p>
+    <ol>
+        <li>Convert your basic tokenizer into a regex tokenizer, which takes a regex pattern and splits the text exactly as GPT-4 would. Process the parts separately as before, then concatenate the results. Retrain your tokenizer and compare the results using the GPT-4 pattern.</li>
+        <li>Load the merges from the GPT-4 tokenizer and show that your tokenizer produces the identical results for both encode and decode, matching tiktoken.</li>
+        <li>Implement your own train function, which tiktoken Library does not provide. This will allow you to train your own token vocabularies.</li>
+    </ol>
+    <p>If you get stuck, reference the minbpe repository, as the code is kept fairly clean and understandable.</p>
+    <img src="frames/01_27_10.jpg" alt="Comparing GPT-4 and minbpe token vocabularies">
+    <p>The image shows a comparison between the GPT-4 token vocabulary (left) and the minbpe token vocabulary (right). While there are some differences due to the training set, the overall structure is similar because they're running the same algorithm.</p>
+    <h2>Training Your Own Tokenizer</h2>
+    <p>When you train your own tokenizer, you're likely to get something similar to GPT-4, depending on what you train it on. As an example, because of the large amount of whitespace in the GPT-4 vocabulary, it's suspected that GPT-4 probably had a lot of Python code in its training set.</p>
+    <p>In the next section, we'll move on from tiktoken and the way that OpenAI tokenizes its strings, and look at the sentencepiece library, which was used to train the Llama 2 vocabulary.</p>
+</body>
+</html>
+
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sentencepiece Library Intro</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 50px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        img {
+            display: block;
+            margin: 20px auto;
+            max-width: 100%;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+            overflow-x: auto;
+        }
+        .caption {
+            text-align: center;
+            font-style: italic;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Sentencepiece Library Intro</h1>
+    
+    <p>Sentencepiece is a commonly used library for training and inference of BPE tokenizers. It is used in both Llama and Mistral model series.</p>
+
+    <p>The big difference between sentencepiece and BPE in the Unicode code points it handles directly. While Tiktoken encodes to utf-8 and then applies BPE on the bytes, sentencepiece runs BPE on the Unicode code points themselves, and for rare code points (determined by a character_coverage hyperparameter) it falls back to encoding them in utf-8 bytes.</p>
+
+    <p>Personally, I think the tiktoken approach is cleaner, but this is a subtle yet significant difference in how they tokenize.</p>
+
+    <img src="frames/01_32_25.jpg" alt="Sentencepiece train options">
+    <div class="caption">The settings used to train a sentencepiece model similar to Llama 2.</div>
+
+    <p>To train a sentencepiece model, there are many options and configurations, some of which are not relevant when using the BPE algorithm. The key settings to match the Llama 2 tokenizer are:</p>
+
+    <pre>
+import sentencepiece as spm
+
+options = dict(
+    input="toy.txt",
+    input_format="text", 
+    model_prefix="tok400", # output filename prefix
+    vocab_size=400,
+    character_coverage=0.99995,
+    byte_fallback=True,
+    split_digits=True,
+    split_by_unicode_script=True,
+    split_by_whitespace=True, 
+    split_by_number=True,
+    max_sentencepiece_length=16,
+    add_dummy_prefix=True,
+)
+
+spm.SentencePieceTrainer.train(**options)
+    </pre>
+
+    <p>After training, we can load the model and inspect the vocabulary. It starts with special tokens, then 256 byte tokens if byte_fallback is true, followed by merge tokens and finally the individual code point tokens.</p>
+
+    <img src="frames/01_38_10.jpg" alt="Sentencepiece encode example">
+    <div class="caption">Encoding a string with Korean characters using the trained sentencepiece model. Unknown characters get encoded as utf-8 byte tokens.</div>
+
+    <p>In summary, while sentencepiece is commonly used in the industry for its efficiency in both training and inference, it has some quirks and historical baggage that can make it confusing to work with. The documentation is also lacking in some areas. However, it remains a useful tool for training your own tokenizers compatible with existing LLMs.</p>
+
+</body>
+</html>
+
+
+<html>
+<head>
+    <title>Revisiting Vocabulary Size in GPT.py Transformer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 40px;
+        }
+        h1, h2, h3 {
+            margin-top: 30px;
+        }
+        img {
+            display: block;
+            margin: 20px auto;
+            max-width: 100%;
+            border: 1px solid #ccc;
+        }
+        pre {
+            background-color: #f4f4f4;
+            border: 1px solid #ddd;
+            padding: 10px;
+            overflow-x: auto;
+        }
+        .code-caption {
+            font-style: italic;
+            text-align: center;
+            margin-top: -10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Revisiting Vocabulary Size in GPT.py Transformer</h1>
+    
+    <p>In this article, we will revisit the issue of how to set the vocabulary size in the GPT model architecture that was developed in a previous tutorial. We will examine where the <code>vocab_size</code> parameter appears in the code and discuss some considerations around setting this value.</p>
+    
+    <h2>Where <code>vocab_size</code> Appears in the Code</h2>
+    
+    <p>Recall the Transformer model definition from the previous tutorial:</p>
+    
+    <img src="frames/01_44_40.jpg" alt="GPT.py code snippet">
+    <p class="code-caption">The GPT model architecture code from the previous tutorial.</p>
+    
+    <p>In this code, <code>vocab_size</code> is defined at the beginning and it doesn't come up too often in most of the layers. It is used in exactly two places:</p>
+    
+    <ol>
+        <li>In the token embedding table, where <code>vocab_size</code> determines the number of rows (i.e., the number of unique tokens). Each token has a trainable vector of size <code>n_embd</code>.</li>
+        <li>In the final language model head (<code>lm_head</code>), which is a linear layer that produces logits for the next token probabilities. The output size of this layer is equal to <code>vocab_size</code>.</li>
+    </ol>
+    
+    <h2>Considerations for Setting <code>vocab_size</code></h2>
+    
+    <p>As <code>vocab_size</code> increases, the token embedding table and the <code>lm_head</code> layer will grow. This means more computation, especially in the final layer where a dot product is performed for each possible next token.</p>
+    
+    <p>Another concern with a large <code>vocab_size</code> is that some parameters may be under-trained. If there are too many unique tokens, each individual token will appear rarely in the training data, leading to their associated vectors being updated less frequently during training.</p>
+    
+    <p>On the other hand, a larger <code>vocab_size</code> allows the input sequences to be compressed more, as each token can represent a larger chunk of text. However, if the chunks become too large, the model may struggle to process the information effectively in its forward pass.</p>
+    
+    <p>In practice, <code>vocab_size</code> is typically set empirically and falls in the range of tens to hundreds of thousands for state-of-the-art models.</p>
+    
+    <h2>Extending <code>vocab_size</code> of a Pre-trained Model</h2>
+    
+    <p>It is sometimes desirable to extend the <code>vocab_size</code> of a pre-trained model, for example, to add special tokens for specific tasks like dialogue or tool usage.</p>
+    
+    <p>To add new tokens, the embedding table can be resized by adding new randomly initialized rows. The <code>lm_head</code> layer's weights also need to be resized to produce logits for the new tokens.</p>
+    
+    <img src="frames/01_47_40.jpg" alt="Code snippet illustrating resizing of vocab_size">
+    <p class="code-caption">Resizing the token embedding table and lm_head to accommodate new tokens.</p>
+    
+    <p>This resizing operation is a form of model surgery that can be done fairly easily. The new parameters can be trained while the base model is frozen, or the entire model can be fine-tuned depending on the use case.</p>
+    
+    <h2>Conclusion</h2>
+    
+    <p>Setting the vocabulary size is an important hyperparameter choice when working with transformer language models like GPT. It impacts model size, computational cost, and training efficiency. The optimal value depends on the specific application and is usually determined empirically. When necessary, an existing model's vocabulary can be extended through a straightforward resizing operation.</p>
+</body>
+</html>
+
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Learning to Compress Prompts with Gist Tokens</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 40px auto;
+            max-width: 800px;
+            padding: 0 20px;
+        }
+        h1, h2 {
+            line-height: 1.2;
+        }
+        img {
+            display: block;
+            margin: 20px auto;
+            max-width: 100%;
+        }
+        figcaption {
+            font-style: italic;
+            text-align: center;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Learning to Compress Prompts with Gist Tokens</h1>
+    <p>Prompting is the primary way to utilize the multitask capabilities of language models (LMs), but prompts occupy valuable space in the input context window, and repeatedly encoding the same prompt is computationally inefficient. Finetuning and distillation methods allow for specialization of LMs without prompting, but require retraining the model for each task. To avoid this trade-off entirely, we present gisting, which trains an LM to compress prompts into smaller sets of "gist" tokens which can be cached and reused for computational efficiency.</p>
+    <figure>
+        <img src="frames/01_48_45.jpg" alt="Prompting vs Gisting">
+        <figcaption>Figure 1: Prompting retains the multitask capabilities of LMs, but is inefficient. Finetuning/distillation is more efficient, but requires training a model for each task. Gisting compresses prompts into activations on top of "gist tokens", saving compute and generalizing to novel tasks at test time.</figcaption>
+    </figure>
+    <p>In this paper, the authors propose a very simple way to learn a gist model: doing instruction tuning with gist tokens inserted after the prompt, and a modified attention mask preventing tokens <i>after</i> the gist tokens from attending to tokens <i>before</i> the gist tokens. This allows a model to learn prompt compression and instruction following at the same time, with no additional training cost.</p>
+    <p>On decoder-only (LLaMA-7B) and encoder-decoder (FLAN-T5-XXL) LMs, gisting achieves prompt compression rates of up to 26x, while maintaining output quality similar to the original models in human evaluations. This results in up to 40% FLOPs reduction and 4.2% latency speedups during inference, with greatly decreased storage costs compared to traditional prompt caching approaches.</p>
+    <h2>Gisting</h2>
+    <p>Gisting is a technique for compressing long prompts into a few new "gist tokens". The model is trained by distillation, keeping the entire model frozen and only training the representations of the new tokens (their embeddings). The new tokens are optimized such that the behavior of the language model is identical to the model that has a very long prompt that works, effectively compressing that prompt into the gist tokens. At test time, the old prompt can be discarded and replaced with the gist tokens, which stand in for the long prompt with almost identical performance.</p>
+    <p>Gisting is an example of a parameter-efficient fine-tuning technique, where most of the model is fixed and the only trainable parameters are the token embeddings. This is just one example in a broader design space of applications in terms of introducing new tokens into a vocabulary that go beyond just adding special tokens and special new functionality.</p>
+</body>
+</html>
+
+
+<html>
+<head>
+    <title>Multimodal Tokenization with Vector Quantization</title>
+</head>
+<body style="font-family: charter,Georgia,Cambria,Times,Times New Roman,serif; margin-left: auto; margin-right: auto; max-width: 45em;">
+    <h1>Multimodal Tokenization with Vector Quantization</h1>
+    
+    <p>Transformers have the capability to process not just text as the input modality, but also other modalities such as images, videos, audio, etc. To feed these modalities into a Transformer, you don't have to fundamentally change the architecture. You can tokenize your input domains and then treat them as if they were text tokens, keeping everything else identical.</p>
+
+    <p>For example, an early paper demonstrated how to chunk an image into integers, which essentially become the tokens of images:</p>
+    
+    <img src="frames/01_50_45.jpg" alt="VQGAN illustration" style="display: block; margin-left: auto; margin-right: auto;">
+    
+    <p>These tokens can be hard tokens (forced to be integers) or soft tokens (representations that go through bottlenecks like in autoencoders). OpenAI's SORA paper further showcases the potential of multimodal tokenization:</p>
+    
+    <img src="frames/01_51_20.jpg" alt="Turning visual data into patches" style="display: block; margin-left: auto; margin-right: auto;">
+
+    <p>SORA has visual patches, which are essentially tokens with their own vocabulary. These discrete tokens can be processed with autoregressive models, while soft tokens can be processed with diffusion models. The exact design and processing of these tokens is an active area of research.</p>
+
+    <p>In summary, by tokenizing different modalities into a unified representation, Transformers can be applied to multimodal tasks without significant architectural changes. This approach opens up exciting possibilities for processing and generating images, videos, audio and more using the powerful capabilities of Transformers.</p>
+
+</body>
+</html>
+
+
+<html>
+  <head>
+    <title>The Quirks of LLM Tokenization</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        margin: 0 auto;
+        max-width: 800px;
+        padding: 20px;
+      }
+      h1, h2, h3 {
+        font-weight: bold;
+        margin-bottom: 10px;
+        margin-top: 30px;
+      }
+      p {
+        margin-bottom: 20px; 
+      }
+      img {
+        display: block;
+        margin: 0 auto;
+        max-width: 100%;
+      }
+      figcaption {
+        font-style: italic;
+        text-align: center;
+      }
+      code {
+        background-color: #f4f4f4;
+        padding: 2px 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>The Quirks of LLM Tokenization</h1>
+    <p>Now that we have a deeper understanding of how tokenization works in large language models (LLMs), let's revisit some of the quirks and issues that arise due to the tokenization process.</p>
+    
+    <h2>Why Can't LLMs Spell Words?</h2>
+    <p>LLMs struggle with spelling and other character-level tasks because of how text is chunked into tokens. Some tokens can be quite long, like <code>DefaultCellStyle</code>, which is a single token in the GPT vocabulary. The model likely has difficulty answering questions about the number of specific letters in such a long token.</p>
+    <img src="frames/01_52_20.jpg" alt="DefaultCellStyle token in tiktokenizer">
+    <figcaption>The <code>DefaultCellStyle</code> token in the GPT vocabulary.</figcaption>
+    <p>When asked to reverse the string "DefaultCellStyle", the model produces a jumbled output, indicating it cannot process the string character by character. However, if the string is first broken down into individual characters, the model can reverse it correctly.</p>
+    
+    <h2>Why Is LLM Performance Worse for Non-English Languages?</h2>
+    <p>LLMs typically see less non-English data during training, and their tokenizers are not sufficiently trained on non-English text. This leads to a higher number of tokens for non-English phrases compared to their English counterparts.</p>
+    <img src="frames/01_54_25.jpg" alt="Token count comparison between English and Korean">
+    <figcaption>The Korean translation of "Hello how are you?" requires more tokens than the English phrase.</figcaption>
+    
+    <h2>Why Are LLMs Bad at Simple Arithmetic?</h2>
+    <p>The tokenization of numbers in LLMs is arbitrary, with digits often split into multiple tokens. This makes it challenging for the model to perform character-level operations like addition, as it cannot easily refer to specific parts of a number. The inconsistent tokenization of numbers across different ranges further compounds this issue.</p>
+
+    <h2>The "SolidGoldMagikarp" Mystery</h2>
+    <p>A peculiar cluster of tokens, including "SolidGoldMagikarp", was discovered in the GPT-2 token embeddings. When prompted with these tokens, the model exhibits bizarre behaviors, such as hallucinations, insults, and evasive responses.</p>
+    <p>It is believed that the tokenization dataset included a significant amount of Reddit data mentioning the user "SolidGoldMagikarp". However, this data was likely not present in the language model's training set, resulting in these tokens remaining untrained and causing undefined behavior when encountered.</p>
+
+    <p>In conclusion, tokenization plays a crucial role in the performance and quirks of LLMs. Understanding these issues can help us better interpret model outputs and design more robust systems.</p>
+  </body>
+</html>
+
+
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tokenization in Large Language Models</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      margin: 0 auto;
+      max-width: 800px;
+      padding: 20px;
+    }
+    h1, h2 {
+      color: #333;
+    }
+    img {
+      display: block;
+      margin: 20px auto;
+      max-width: 100%;
+    }
+    figcaption {
+      text-align: center;
+      font-style: italic;
+    }
+    pre {
+      background-color: #f4f4f4;
+      padding: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Tokenization in Large Language Models</h1>
+  
+  <p>Tokenization is a relatively complex and gnarly component of the state of the art Large Language Models (LLMs), but it is necessary to understand in some detail because a lot of its shortcomings that may be attributed to the neural network or otherwise appear mysterious actually trace back to tokenization.</p>
+  
+  <h2>Final Recommendations</h2>
+  
+  <p>While tokenization has a lot of footguns and sharp edges including security issues and AI safety issues, it's worth understanding this stage. Eternal glory goes to anyone who can delete tokenization as a required step in LLMs.</p>
+  
+  <p>For your own application, here are some recommendations:</p>
+  <ul>
+    <li>Maybe you can just re-use the GPT-4 tokens and tiktoken?</li>
+    <li>If you're training a vocab, ok to use BPE with sentencepiece. Careful with the million settings.</li> 
+    <li>Switch to minbpe once it is as efficient as sentencepiece :)</li>
+  </ul>
+
+  <figure>
+    <img src="frames/02_12_00.jpg" alt="Final recommendations slide">
+    <figcaption>Final recommendations for tokenization in your own application</figcaption>
+  </figure>
+
+  <p>Reference the GPT-2 encoder.py. Download the vocab.bpe and encoder.json files.</p>
+
+  <figure>
+    <img src="frames/02_13_05.jpg" alt="Code snippet using tiktoken">
+    <figcaption>Using tiktoken to get the GPT-2 encoding of an example string</figcaption>
+  </figure>
+
+  <p>In the future, the ideal solution would be tiktoken but with training code, which does not currently exist. MBPE is an implementation of this but is currently in Python, so it is not as efficient as it could be.</p>
+
+</body>
+</html>
